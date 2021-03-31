@@ -48,7 +48,9 @@ class Classifier {
     //[1, 29]
     var outputsForPrediction = [List.generate(29, (index) => 0.0)];
     print("Before $outputsForPrediction");
+    Stopwatch stopwatch = new Stopwatch()..start();
     _interpreter.run(modelInput.buffer, outputsForPrediction);
+    print('Inference Time ${stopwatch.elapsed.inMilliseconds}');
     Map<int, double> map = outputsForPrediction[0].asMap();
     var sortedKeys = map.keys.toList()
       ..sort((k1, k2) => map[k2].compareTo(map[k1]));
@@ -74,27 +76,11 @@ class Classifier {
       for (var j = 0; j < inputSize; j++) {
         var pixel = image.getPixel(j, i);
 
-        buffer[pixelIndex++] = (img.getRed(pixel) - 0) / 255;
-        buffer[pixelIndex++] = (img.getGreen(pixel) - 0) / 255;
-        buffer[pixelIndex++] = (img.getBlue(pixel) - 0) / 255;
+        buffer[pixelIndex++] = (img.getRed(pixel) - 128) / 128;
+        buffer[pixelIndex++] = (img.getGreen(pixel) - 128) / 128;
+        buffer[pixelIndex++] = (img.getBlue(pixel) - 128) / 128;
       }
     }
     return convertedBytes.buffer.asFloat32List();
   }
-
-  // Uint8List imageToByteListUint8(img.Image image, int inputSize) {
-  //   var convertedBytes = Uint8List(1 * inputSize * inputSize * 3);
-  //   var buffer = Uint8List.view(convertedBytes.buffer);
-
-  //   int pixelIndex = 0;
-  //   for (var i = 0; i < inputSize; i++) {
-  //     for (var j = 0; j < inputSize; j++) {
-  //       var pixel = image.getPixel(i, j);
-  //       buffer[pixelIndex++] = img.getRed(pixel);
-  //       buffer[pixelIndex++] = img.getGreen(pixel);
-  //       buffer[pixelIndex++] = img.getBlue(pixel);
-  //     }
-  //   }
-  //   return convertedBytes.buffer.asUint8List();
-  // }
 }
