@@ -1,2 +1,1 @@
-# American-Sign-Language
-Detection Challenge
+# American Sign Language
