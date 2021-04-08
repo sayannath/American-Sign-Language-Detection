@@ -1,4 +1,4 @@
-# American Sign Language
+# American Sign Language Detection
 
 <img src="readme/tensorflow-lite-logo-social.png">
 
