@@ -1,4 +1,4 @@
-# TensorFlow Lite image classification Android
+# TensorFlow Lite Image Classification Android
 
 ## Overview
 
