@@ -34,4 +34,10 @@ Connect the Android device to the computer and be sure to approve any ADB permis
 ```
 To test the app, open the app called ```American Sign Language App``` on your device. When you run the app the first time, the app will request permission to access the camera. Re-installing the app may require you to uninstall the previous installations.
 
+## Branches
+```
+master - Implementated Tensorflow Lite
+feature/tf-task-library - Implemented Tensorflow Lite Task Lite Library
+```
+
 ## That's it!
