@@ -1,3 +1,14 @@
+[![GitHub issues](https://img.shields.io/github/issues/sayannath/American-Sign-Language-Detection?style=for-the-badge)](https://github.com/sayannath/American-Sign-Language-Detection/issues)
+[![GitHub forks](https://img.shields.io/github/forks/sayannath/American-Sign-Language-Detection?style=for-the-badge)](https://github.com/sayannath/American-Sign-Language-Detection/network)
+[![GitHub stars](https://img.shields.io/github/stars/sayannath/American-Sign-Language-Detection?style=for-the-badge)](https://github.com/sayannath/American-Sign-Language-Detection/stargazers)
+[![GitHub license](https://img.shields.io/github/license/sayannath/American-Sign-Language-Detection?style=for-the-badge)](https://github.com/sayannath/American-Sign-Language-Detection/blob/master/LICENSE)
+![GitHub last commit](https://img.shields.io/github/last-commit/sayannath/American-Sign-Language-Detection?style=for-the-badge) 
+
+## Contributers
+<a href="https://github.com/sayannath/American-Sign-Language-Detection/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=sayannath/American-Sign-Language-Detection" />
+</a>
+
 # American Sign Language Detection
 
 <img src="readme/tensorflow-lite-logo-social.png">
