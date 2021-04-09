@@ -2,6 +2,7 @@ package org.tensorflow.lite.examples.classification.tflite;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.os.Trace;
@@ -12,11 +13,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+
+import android.util.Log;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.examples.classification.env.Logger;
 import org.tensorflow.lite.examples.classification.tflite.Classifier.Device;
-import org.tensorflow.lite.gpu.GpuDelegate;
+//import org.tensorflow.lite.gpu.GpuDelegate;
 import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.common.TensorOperator;
 import org.tensorflow.lite.support.common.TensorProcessor;
@@ -26,8 +29,16 @@ import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.support.image.ops.ResizeOp.ResizeMethod;
 import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
 import org.tensorflow.lite.support.image.ops.Rot90Op;
+import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.support.label.TensorLabel;
+import org.tensorflow.lite.support.metadata.MetadataExtractor;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+import org.tensorflow.lite.task.core.vision.ImageProcessingOptions;
+import org.tensorflow.lite.task.vision.classifier.ImageClassifier;
+import org.tensorflow.lite.task.vision.classifier.Classifications;
+import org.tensorflow.lite.task.vision.classifier.ImageClassifier.ImageClassifierOptions;
+
+import static java.lang.Math.min;
 
 /** A classifier specialized to label images using TensorFlow Lite. */
 public abstract class Classifier {
@@ -52,11 +63,12 @@ public abstract class Classifier {
   private final int imageSizeY;
 
   /** Optional GPU delegate for acceleration. */
-  private GpuDelegate gpuDelegate = null;
+//  private GpuDelegate gpuDelegate = null;
 
 
   /** An instance of the driver class to run model inference with Tensorflow Lite. */
   protected Interpreter tflite;
+  protected ImageClassifier imageClassifier;
 
   /** Options for configuring the Interpreter. */
   private final Interpreter.Options tfliteOptions = new Interpreter.Options();
@@ -67,11 +79,6 @@ public abstract class Classifier {
   /** Input image TensorBuffer. */
   private TensorImage inputImageBuffer;
 
-  /** Output probability TensorBuffer. */
-  private final TensorBuffer outputProbabilityBuffer;
-
-  /** Processer to apply post processing of the output probability. */
-  private final TensorProcessor probabilityProcessor;
 
   /**
    * Creates a classifier with the provided configuration.
@@ -159,44 +166,29 @@ public abstract class Classifier {
 
   /** Initializes a {@code Classifier}. */
   protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
-    tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
-    switch (device) {
-      case GPU:
-        gpuDelegate = new GpuDelegate();
-        tfliteOptions.addDelegate(gpuDelegate);
-
-        break;
-      case CPU:
-        break;
+    if (device != Device.CPU) {
+      throw new IllegalArgumentException(
+              "Manipulating the hardware accelerators is not allowed in the Task"
+                      + " library currently. Only CPU is allowed.");
     }
-    tfliteOptions.setNumThreads(numThreads);
 
-    tflite = new Interpreter(tfliteModel, tfliteOptions);
+    // Create the ImageClassifier instance.
+    ImageClassifierOptions options =
+            ImageClassifierOptions.builder()
+                    .setMaxResults(MAX_RESULTS)
+                    .setNumThreads(numThreads)
+                    .build();
+    imageClassifier = ImageClassifier.createFromFileAndOptions(activity, getModelPath(), options);
+    LOGGER.d("Created a Tensorflow Lite Image Classifier.");
 
-    // Loads labels out from the label file.
-    labels = FileUtil.loadLabels(activity, getLabelPath());
+    // Get the input image size information of the underlying tflite model.
+    tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
+    MetadataExtractor metadataExtractor = new MetadataExtractor(tfliteModel);
 
-    // Reads type and shape of input and output tensors, respectively.
-    int imageTensorIndex = 0;
-    int[] imageShape = tflite.getInputTensor(imageTensorIndex).shape(); // {1, height, width, 3}
+    // Image shape is in the format of {1, height, width, 3}.
+    int[] imageShape = metadataExtractor.getInputTensorShape(/*inputIndex=*/ 0);
     imageSizeY = imageShape[1];
     imageSizeX = imageShape[2];
-    DataType imageDataType = tflite.getInputTensor(imageTensorIndex).dataType();
-    int probabilityTensorIndex = 0;
-    int[] probabilityShape =
-        tflite.getOutputTensor(probabilityTensorIndex).shape(); // {1, NUM_CLASSES}
-    DataType probabilityDataType = tflite.getOutputTensor(probabilityTensorIndex).dataType();
-
-    // Creates the input tensor.
-    inputImageBuffer = new TensorImage(imageDataType);
-
-    // Creates the output tensor and its processor.
-    outputProbabilityBuffer = TensorBuffer.createFixedSize(probabilityShape, probabilityDataType);
-
-    // Creates the post processor for the output probability.
-    probabilityProcessor = new TensorProcessor.Builder().add(getPostprocessNormalizeOp()).build();
-
-    LOGGER.d("Created a Tensorflow Lite Image Classifier.");
   }
 
   /** Runs inference and returns the classification results. */
@@ -204,48 +196,44 @@ public abstract class Classifier {
     // Logs this method so that it can be analyzed with systrace.
     Trace.beginSection("recognizeImage");
 
-    Trace.beginSection("loadImage");
-    long startTimeForLoadImage = SystemClock.uptimeMillis();
-    inputImageBuffer = loadImage(bitmap, sensorOrientation);
-    long endTimeForLoadImage = SystemClock.uptimeMillis();
-    Trace.endSection();
-    LOGGER.v("Timecost to load the image: " + (endTimeForLoadImage - startTimeForLoadImage));
+    TensorImage inputImage = TensorImage.fromBitmap(bitmap);
+    int width = bitmap.getWidth();
+    int height = bitmap.getHeight();
+    int cropSize = min(width, height);
+
+    ImageProcessingOptions imageOptions =
+            ImageProcessingOptions.builder()
+                    .setOrientation(getOrientation(sensorOrientation))
+                    // Set the ROI to the center of the image.
+                    .setRoi(
+                            new Rect(
+                                    /*left=*/ (width - cropSize) / 2,
+                                    /*top=*/ (height - cropSize) / 2,
+                                    /*right=*/ (width + cropSize) / 2,
+                                    /*bottom=*/ (height + cropSize) / 2))
+                    .build();
 
     // Runs the inference call.
     Trace.beginSection("runInference");
     long startTimeForReference = SystemClock.uptimeMillis();
-
-    tflite.run(inputImageBuffer.getBuffer(), outputProbabilityBuffer.getBuffer().rewind());
+    List<Classifications> results = imageClassifier.classify(inputImage, imageOptions);
     long endTimeForReference = SystemClock.uptimeMillis();
     Trace.endSection();
     LOGGER.v("Time-Cost to run model inference: " + (endTimeForReference - startTimeForReference));
 
-    // Gets the map of label and probability.
-    Map<String, Float> labeledProbability =
-            new TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
-                    .getMapWithFloatValue();
-
     Trace.endSection();
-
     // Gets top-k results.
-    return getTopKProbability(labeledProbability);
+    return getTopKProbability(results);
   }
 
-  /** Closes the interpreter and model to release resources. */
-  public void close() {
-    if (tflite != null) {
 
-      tflite.close();
-      tflite = null;
+    /** Closes the interpreter and model to release resources. */
+    public void close() {
+      if (imageClassifier != null) {
+        imageClassifier.close();
+      }
     }
 
-    if (gpuDelegate != null) {
-      gpuDelegate.close();
-      gpuDelegate = null;
-    }
-
-    tfliteModel = null;
-  }
 
   /** Get the image size along the x axis. */
   public int getImageSizeX() {
@@ -278,27 +266,14 @@ public abstract class Classifier {
   }
 
   /** Gets the top-k results. */
-  private static List<Recognition> getTopKProbability(Map<String, Float> labelProb) {
+  private static List<Recognition> getTopKProbability(List<Classifications> classifications) {
     // Find the best classifications.
-    PriorityQueue<Recognition> pq =
-        new PriorityQueue<>(
-            MAX_RESULTS,
-            new Comparator<Recognition>() {
-              @Override
-              public int compare(Recognition lhs, Recognition rhs) {
-                // Intentionally reversed to put high confidence at the head of the queue.
-                return Float.compare(rhs.getConfidence(), lhs.getConfidence());
-              }
-            });
-
-    for (Map.Entry<String, Float> entry : labelProb.entrySet()) {
-      pq.add(new Recognition("" + entry.getKey(), entry.getKey(), entry.getValue(), null));
-    }
-
     final ArrayList<Recognition> recognitions = new ArrayList<>();
-    int recognitionsSize = Math.min(pq.size(), MAX_RESULTS);
-    for (int i = 0; i < recognitionsSize; ++i) {
-      recognitions.add(pq.poll());
+    // All the demo models are single head models. Get the first Classifications in the results.
+    for (Category category : classifications.get(0).getCategories()) {
+      recognitions.add(
+              new Recognition(
+                      "" + category.getLabel(), category.getLabel(), category.getScore(), null));
     }
     return recognitions;
   }
@@ -312,6 +287,19 @@ public abstract class Classifier {
   /** Gets the TensorOperator to nomalize the input image in preprocessing. */
   protected abstract TensorOperator getPreprocessNormalizeOp();
 
+  /* Convert the camera orientation in degree into {@link ImageProcessingOptions#Orientation}.*/
+  private static ImageProcessingOptions.Orientation getOrientation(int cameraOrientation) {
+    switch (cameraOrientation / 90) {
+      case 3:
+        return ImageProcessingOptions.Orientation.BOTTOM_LEFT;
+      case 2:
+        return ImageProcessingOptions.Orientation.BOTTOM_RIGHT;
+      case 1:
+        return ImageProcessingOptions.Orientation.TOP_RIGHT;
+      default:
+        return ImageProcessingOptions.Orientation.TOP_LEFT;
+    }
+  }
   /**
    * Gets the TensorOperator to dequantize the output probability in post processing.
    *
