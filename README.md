@@ -11,7 +11,7 @@
 
 # American Sign Language Detection
 
-<img src="readme/tensorflow-lite-logo-social.png">
+<img src="readme/tf-Lite-logo.png">
 
 ## Description
 American Sign Language Detection is a deep learning end to end project where we can detect American sign Language. It handles upto 29 classes. Used MobileNetv2  to train the images. It is deployed in a mobile phone using TF-Lite. 
