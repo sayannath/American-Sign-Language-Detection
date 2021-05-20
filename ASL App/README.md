@@ -1,5 +1,7 @@
 # TensorFlow Lite Image Classification Android
 
+<img src="../readme/android.jpg">
+
 ## Overview
 
 In this android app, we have implemented a tensorflow lite model which can detect american sign language upto 29 signs. You can even select the model whether to run this on CPU or GPU.
