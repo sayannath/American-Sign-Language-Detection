@@ -4,11 +4,6 @@
 [![GitHub license](https://img.shields.io/github/license/sayannath/American-Sign-Language-Detection?style=for-the-badge)](https://github.com/sayannath/American-Sign-Language-Detection/blob/master/LICENSE)
 ![GitHub last commit](https://img.shields.io/github/last-commit/sayannath/American-Sign-Language-Detection?style=for-the-badge) 
 
-## Contributers
-<a href="https://github.com/sayannath/American-Sign-Language-Detection/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=sayannath/American-Sign-Language-Detection" />
-</a>
-
 # American Sign Language Detection
 
 <img src="readme/tf-Lite-logo.png">
@@ -43,7 +38,9 @@ Pull Requests are welcome. Please follow these rules for the ease of understandi
 
 ## Developed & Maintained by
 
-[👨 Sayan Nath](https://sayannath.biz/)
+<a href="https://github.com/sayannath/American-Sign-Language-Detection/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=sayannath/American-Sign-Language-Detection" />
+</a>
 
 [![ForTheBadge built-with-love](http://ForTheBadge.com/images/badges/built-with-love.svg)](https://github.com/sayannath)
 <a href="https://www.buymeacoffee.com/sayannath235" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
